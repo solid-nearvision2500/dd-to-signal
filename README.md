@@ -9,7 +9,7 @@ Every 10-K is a rewrite of last year's 10-K. **dd-to-signal** finds the edits.
 ![The CLI comparing Apple's 2025 10-K against its 2024 one: a signal score, per-section change counts, and the rewritten tariffs paragraph marked up word by word](docs/demo.gif)
 
 ```
-$ pip install dd-to-signal
+$ pip install git+https://github.com/GeoCodeCrafter/dd-to-signal
 $ dd-to-signal demo AAPL      # bundled filings, no network, no key
 ```
 
@@ -34,7 +34,7 @@ and show you what moved.
 ## Sixty seconds
 
 ```bash
-pip install dd-to-signal
+pip install git+https://github.com/GeoCodeCrafter/dd-to-signal
 
 dd-to-signal demo                    # six bundled companies, ranked
 dd-to-signal demo AAPL               # one of them, in detail
