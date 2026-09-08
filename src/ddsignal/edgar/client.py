@@ -7,8 +7,8 @@ your code for about twenty minutes before you read the fair-access notice.
 
 So this module is the only place in the project that touches the network, and it
 does three things: identifies itself, throttles itself, and caches everything to
-disk. The cache is what makes the rest of the project pleasant to work on -- the
-second run of a pipeline over the same filings does no network I/O at all.
+disk. The cache is what makes the rest of the project pleasant to work on: a
+second run over the same filings does no network I/O at all.
 """
 
 from __future__ import annotations
@@ -30,6 +30,12 @@ log = logging.getLogger(__name__)
 #: while data.sec.gov accepts them happily. Half a day went into finding that,
 #: so the default here is the plain two-token form that both hosts accept.
 DEFAULT_USER_AGENT = "dd-to-signal opusdevs@proton.me"
+
+#: How long a cached *index* stays usable. Filing documents are immutable and
+#: cached forever; the submissions index and the ticker map are not, and an hour
+#: is short enough that a filing published this morning is picked up this
+#: afternoon without re-fetching the index on every single command.
+INDEX_MAX_AGE = 3600.0
 
 #: The SEC's published ceiling is ten requests a second. We sit at six, because
 #: the ceiling is shared with every other tool running on your IP and being the
@@ -126,25 +132,52 @@ class EdgarClient:
         # directory of that size is miserable on every filesystem involved.
         return self.cache_dir / digest[:2] / digest[2:4] / f"{digest}.bin"
 
-    def cached(self, url: str) -> bytes | None:
+    def cached(self, url: str, *, max_age: float | None = None) -> bytes | None:
+        """The cached body, if there is one and it is young enough."""
         path = self._cache_path(url)
-        return path.read_bytes() if path.exists() else None
+        if not path.exists():
+            return None
+        if max_age is not None and time.time() - path.stat().st_mtime > max_age:
+            return None
+        return path.read_bytes()
 
     # -- fetching ------------------------------------------------------------
 
-    def get(self, url: str, *, retries: int = 3) -> Fetch:
-        """Return the body of ``url``, from disk if we have already seen it."""
-        hit = self.cached(url)
+    def get(self, url: str, *, retries: int = 3, max_age: float | None = None) -> Fetch:
+        """Return the body of ``url``, from disk if we have a usable copy.
+
+        ``max_age`` is the point of this signature. A filing document never
+        changes once filed, so it is cached forever. The indexes that say which
+        filings exist change constantly, and caching those forever means the
+        second run of this tool is reading a snapshot of the day you installed
+        it: a company could file a new 10-K and the tool would never see it.
+        Callers that read an index pass a max_age; callers that read a document
+        do not. See INDEX_MAX_AGE.
+        """
+        hit = self.cached(url, max_age=max_age)
         if hit is not None:
             return Fetch(hit, from_cache=True)
 
         if self.offline:
+            stale = self.cached(url)
+            if stale is not None:
+                log.debug("offline: using an expired copy of %s", url)
+                return Fetch(stale, from_cache=True)
             raise EdgarError(
                 f"offline, and {url} is not cached. Run without --offline to fetch it, "
                 "or point --cache at a directory that has it."
             )
 
-        body = self._get_uncached(url, retries=retries)
+        try:
+            body = self._get_uncached(url, retries=retries)
+        except EdgarError:
+            # An expired index still beats no answer when EDGAR is down. It is
+            # only the freshness guarantee that is lost, so say so and go on.
+            stale = self.cached(url)
+            if stale is None:
+                raise
+            log.warning("EDGAR unreachable; falling back to an expired copy of %s", url)
+            return Fetch(stale, from_cache=True)
         path = self._cache_path(url)
         path.parent.mkdir(parents=True, exist_ok=True)
         # Write-then-rename, so an interrupted run cannot leave a truncated file
@@ -185,7 +218,7 @@ class EdgarClient:
 
         raise EdgarError(f"giving up on {url} after {retries} attempts") from last
 
-    def json(self, url: str) -> dict:
+    def json(self, url: str, *, max_age: float | None = None) -> dict:
         import json
 
-        return json.loads(self.get(url).text)
+        return json.loads(self.get(url, max_age=max_age).text)

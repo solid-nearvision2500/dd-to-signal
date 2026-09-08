@@ -20,8 +20,8 @@ TEMPLATES = Path(__file__).parent / "templates"
 ASSETS = Path(__file__).parent / "assets"
 
 #: How many changes to render per section by default. A heavily rewritten 10-K
-#: can produce 200, and a browser will render all of them -- but nobody reads
-#: past the biggest few dozen, and the file size stops being emailable.
+#: can produce 200. A browser will render all of them, but nobody reads past
+#: the biggest few dozen and the file stops being small enough to email.
 DEFAULT_LIMIT = 40
 
 

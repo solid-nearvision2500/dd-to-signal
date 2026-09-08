@@ -3,8 +3,8 @@
 A tool that needs an API key, a rate limit and a good connection before it will
 draw anything gets cloned and abandoned. These fixtures are real filings, parsed
 into blocks and stored compressed, so ``dd-to-signal demo`` works offline the
-moment the package is installed -- and it runs the same comparison code that a
-live fetch does, so a passing demo is evidence the real thing works.
+moment the package is installed. It runs the same comparison code that a live
+fetch does, so a passing demo is evidence the real thing works.
 """
 
 from __future__ import annotations

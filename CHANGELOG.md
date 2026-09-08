@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- The filing index is no longer cached forever. Filing documents are immutable
+  and still cached permanently, but the submissions index and the ticker map now
+  expire after an hour. Without this, the second run of the tool read the list of
+  filings captured on the day it was installed, so a newly filed 10-K would never
+  be picked up.
+- An expired index is used as a fallback when EDGAR is unreachable, with a
+  warning, rather than failing the run outright.
+
 ## [0.1.0] - 2026-09-08
 
 First release.

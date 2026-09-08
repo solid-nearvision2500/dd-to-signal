@@ -2,10 +2,10 @@
 
 A year-on-year 10-K diff is not a line diff. The paragraphs move: a company
 reorders its risk factors, splits one in two, promotes a sub-point to its own
-heading. ``difflib`` on the paragraph list handles none of that -- move a
+heading. ``difflib`` on the paragraph list handles none of that. Move a
 paragraph from position 4 to position 40 and you get one deletion and one
 addition, which reads as "they deleted a risk and added an unrelated one" when
-in fact nothing changed but the running order.
+nothing changed but the running order.
 
 So this is a matching problem, solved in three passes, cheapest first:
 
@@ -16,10 +16,10 @@ So this is a matching problem, solved in three passes, cheapest first:
    ones anybody actually wants to read.
 3. **Leftovers.** Whatever failed to pair is a genuine addition or deletion.
 
-The greedy step is not the optimal assignment -- that would be the Hungarian
-algorithm -- but on real filings the similarity matrix is close to a permutation
-matrix, so greedy and optimal agree almost everywhere, and greedy does not need
-a quadratic-memory solver on a 2,000-paragraph section.
+The greedy step is not the optimal assignment. That would be the Hungarian
+algorithm. On real filings the similarity matrix is close to a permutation
+matrix, so the two agree almost everywhere, and greedy does not need a
+quadratic-memory solver on a 2,000-paragraph section.
 """
 
 from __future__ import annotations

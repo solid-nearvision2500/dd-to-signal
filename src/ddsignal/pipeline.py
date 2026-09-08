@@ -132,10 +132,10 @@ class FilingDiff:
         """Topics named in the new filing that the old one never named.
 
         Scoped to risk factors where we have them, because that is the claim
-        worth making. A company has always *mentioned* tariffs somewhere -- in
-        the business description, in a cost discussion. The event is the year it
-        moves the word into the section headed "things that could go wrong",
-        and a union across the whole filing hides exactly that transition.
+        worth making. A company has always mentioned tariffs somewhere, in the
+        business description or a cost discussion. The event is the year the
+        word moves into the section headed "things that could go wrong", and a
+        union across the whole filing hides exactly that transition.
         """
         old, new = self._topic_sets()
         return _rank({k: v for k, v in new.items() if k not in old})

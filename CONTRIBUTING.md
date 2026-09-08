@@ -17,7 +17,7 @@ The test suite needs no network: it runs against the filings bundled in
 for large caps, and every failure is a filer doing something structurally
 different rather than a bug in the abstract. If `dd-to-signal sections TICKER`
 reports `not_found` for a section you can plainly see in the document, that is a
-bug worth reporting — include the ticker, the filing date and what the heading
+bug worth reporting. Include the ticker, the filing date, and what the heading
 actually looks like.
 
 Please do not "fix" these by loosening the matching until something is returned.

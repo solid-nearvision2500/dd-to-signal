@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass
 from datetime import date
 
-from .client import EdgarClient, EdgarError
+from .client import INDEX_MAX_AGE, EdgarClient, EdgarError
 
 TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik:010d}.json"
@@ -69,7 +69,7 @@ class CompanyIndex:
 
     def _load(self) -> dict[str, tuple[int, str]]:
         if self._by_ticker is None:
-            raw = self._client.json(TICKERS_URL)
+            raw = self._client.json(TICKERS_URL, max_age=INDEX_MAX_AGE)
             # The payload is a dict keyed by stringified row number, not a list.
             self._by_ticker = {
                 row["ticker"].upper(): (int(row["cik_str"]), row["title"])
@@ -154,7 +154,7 @@ def list_filings(
     """
     index = index or CompanyIndex(client)
     cik, company = index.resolve(ticker)
-    payload = client.json(SUBMISSIONS_URL.format(cik=cik))
+    payload = client.json(SUBMISSIONS_URL.format(cik=cik), max_age=INDEX_MAX_AGE)
 
     wanted = tuple(f.upper() for f in forms)
     out: list[Filing] = []

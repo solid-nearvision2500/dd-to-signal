@@ -1,7 +1,7 @@
 """Finding Item 1A, Item 7 and friends inside a filing.
 
 This is the part of SEC parsing that everybody underestimates. The naive version
--- search for "Item 1A", slice to "Item 1B" -- fails on essentially every real
+(search for "Item 1A", slice to "Item 1B") fails on essentially every real
 filing, for three reasons:
 
 1. The table of contents lists every item, so the first "Item 1A" in the
@@ -156,9 +156,9 @@ def _anchor_re(item: str) -> re.Pattern[str]:
 
 _PART = re.compile(r"^part\s+([ivx]+)\b", re.I)
 #: A block that starts with "Item 1A" but runs on for a full sentence is a
-#: cross-reference inside body text, not a heading -- unless the filer put the
-#: whole section title and first paragraph in one block, which is why the cut-off
-#: is generous rather than tight.
+#: cross-reference inside body text rather than a heading. The cut-off is
+#: generous rather than tight because some filers put the section title and its
+#: first paragraph in a single block.
 _MAX_HEADING_CHARS = 240
 
 
@@ -192,7 +192,7 @@ def _toc_range(blocks: list[Block]) -> tuple[int, int] | None:
     within twenty blocks and would fool any rule based on proximity alone.
 
     The second is *redundancy*: a contents entry promises the item appears again
-    below. Most filings satisfy this, but not all -- Pfizer numbers its items in
+    below. Most filings satisfy this, but not all. Pfizer numbers its items in
     the contents and then heads the body sections by name only. So a dense run
     of six or more distinct items near the top of the document is taken as a
     contents page even when nothing repeats, since nothing else in a filing has
@@ -295,7 +295,7 @@ def _by_heading(blocks: list[Block], spec: SectionSpec, skip: range | None) -> l
     end = min(ends) if ends else len(blocks)
 
     # If no boundary heading followed, the "section" is everything to the end of
-    # the filing, which is not a section -- it is a failed match that happens to
+    # the filing, which is not a section. It is a failed match that happens to
     # contain the right words. Intel's 10-K produced a 68,000-word Item 7A this
     # way. Better to report nothing found than to report the whole document.
     if (end - start) > len(blocks) * 0.45:
@@ -308,11 +308,11 @@ def _followed_by_prose(blocks: list[Block], i: int) -> bool:
     """Whether the block after ``i`` is a sentence rather than a contents row.
 
     The one shape the contents-page detector cannot resolve on its own is a body
-    section whose entire content is a single short line -- "Refer to pages 9
-    through 31 of the 2025 Annual Report." That is a real section, reported as
-    incorporated by reference, but by shape it is indistinguishable from a row
-    in the table of contents. A sentence is the tell: contents rows are titles
-    and page numbers, and they do not end in full stops.
+    section whose entire content is a single short line, such as "Refer to
+    pages 9 through 31 of the 2025 Annual Report." That is a real section,
+    reported as incorporated by reference, but by shape it is indistinguishable
+    from a row in the table of contents. A sentence is the tell: contents rows
+    are titles and page numbers, and they do not end in full stops.
     """
     if i + 1 >= len(blocks):
         return False
