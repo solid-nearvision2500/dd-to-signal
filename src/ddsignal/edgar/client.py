@@ -25,11 +25,28 @@ import requests
 
 log = logging.getLogger(__name__)
 
-#: SEC fair-access wants "Name contact@example.com". Note the shape carefully:
-#: www.sec.gov returns 403 for any User-Agent containing a URL or parentheses,
-#: while data.sec.gov accepts them happily. Half a day went into finding that,
-#: so the default here is the plain two-token form that both hosts accept.
-DEFAULT_USER_AGENT = "dd-to-signal opusdevs@proton.me"
+#: The environment variable holding the caller's contact address.
+#:
+#: There is deliberately no default. SEC fair access asks every caller to
+#: identify itself so the SEC can reach whoever is running the script. Baking one
+#: address into the package would put every user of this tool behind a single
+#: identity, which defeats the purpose and is unfair to whoever owns it.
+#:
+#: The accepted shape is narrower than the SEC documents. www.sec.gov rejects any
+#: User-Agent with nothing email-shaped in it, and also rejects URLs, parentheses
+#: and @users.noreply.github.com addresses. data.sec.gov is much more relaxed.
+#: The form that satisfies both hosts is a plain "Name you@example.com".
+USER_AGENT_ENV = "DDSIGNAL_USER_AGENT"
+
+NO_USER_AGENT = """SEC EDGAR needs a contact address before it will serve you.
+
+  PowerShell:  $env:DDSIGNAL_USER_AGENT = 'Your Name you@example.com'
+  bash:        export DDSIGNAL_USER_AGENT='Your Name you@example.com'
+
+Or pass --user-agent on the command line. This is the SEC's fair access rule
+rather than ours, and it wants an address that can actually reach you.
+
+No contact address is needed for 'dd-to-signal demo', which runs offline."""
 
 #: How long a cached *index* stays usable. Filing documents are immutable and
 #: cached forever; the submissions index and the ticker map are not, and an hour
@@ -112,17 +129,14 @@ class EdgarClient:
         offline: bool = False,
         session: requests.Session | None = None,
     ) -> None:
-        self.user_agent = user_agent or os.environ.get("DDSIGNAL_USER_AGENT") or DEFAULT_USER_AGENT
+        self.user_agent = user_agent or os.environ.get(USER_AGENT_ENV) or ""
         self.cache_dir = Path(cache_dir) if cache_dir else default_cache_dir()
         self.offline = offline
         self._limiter = RateLimiter(rate)
         self._session = session or requests.Session()
-        self._session.headers.update(
-            {
-                "User-Agent": self.user_agent,
-                "Accept-Encoding": "gzip, deflate",
-            }
-        )
+        self._session.headers.update({"Accept-Encoding": "gzip, deflate"})
+        if self.user_agent:
+            self._session.headers["User-Agent"] = self.user_agent
 
     # -- cache ---------------------------------------------------------------
 
@@ -188,6 +202,12 @@ class EdgarClient:
         return Fetch(body, from_cache=False)
 
     def _get_uncached(self, url: str, *, retries: int) -> bytes:
+        # Checked at the point of going out to the network rather than in
+        # __init__, so the offline demo, the cache commands and the whole test
+        # suite keep working without anyone setting a contact address.
+        if not self.user_agent:
+            raise EdgarError(NO_USER_AGENT)
+
         last: Exception | None = None
         for attempt in range(retries):
             self._limiter.wait()
@@ -203,9 +223,11 @@ class EdgarClient:
                     raise EdgarError(f"404 from EDGAR for {url}")
                 if response.status_code == 403:
                     raise EdgarError(
-                        "403 from EDGAR. This nearly always means the User-Agent is missing a "
-                        "contact address. Set DDSIGNAL_USER_AGENT to something like "
-                        "'yourname you@example.com'."
+                        f"403 from EDGAR for {url}. Your User-Agent is "
+                        f"{self.user_agent!r}. www.sec.gov rejects any that has no "
+                        "email-shaped contact in it, and also rejects URLs, parentheses "
+                        "and @users.noreply.github.com addresses. Use the plain form: "
+                        "Your Name you@example.com"
                     )
                 # 429 and the 5xx family are worth another go.
                 last = EdgarError(f"HTTP {response.status_code} from {url}")

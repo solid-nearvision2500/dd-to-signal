@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- No contact address ships with the package. Live commands now require
+  `DDSIGNAL_USER_AGENT` or `--user-agent`, so that each user identifies
+  themselves to the SEC rather than every install sharing one identity. The
+  offline demo and anything served from cache still need nothing.
+
 ### Fixed
 
 - The filing index is no longer cached forever. Filing documents are immutable

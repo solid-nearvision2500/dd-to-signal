@@ -9,7 +9,7 @@ description = "Diff every SEC filing against the last one, and surface what comp
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-authors = [{ name = "OpusDevs", email = "opusdevs@proton.me" }]
+authors = [{ name = "GeoCodeCrafter" }]
 keywords = ["sec", "edgar", "10-K", "filings", "nlp", "diff", "finance", "equity-research"]
 classifiers = [
   "Development Status :: 4 - Beta",

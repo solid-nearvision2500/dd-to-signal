@@ -13,11 +13,24 @@ Every 10-K is a rewrite of last year's 10-K. **dd-to-signal** finds the edits.
 ```bash
 pip install git+https://github.com/GeoCodeCrafter/dd-to-signal
 
+dd-to-signal demo AAPL
+```
+
+That runs against filings bundled in the package, so it needs no network and no
+setup at all. To pull live data, EDGAR wants to know who is calling:
+
+```bash
+export DDSIGNAL_USER_AGENT="Your Name you@example.com"   # PowerShell: $env:DDSIGNAL_USER_AGENT = '...'
+
 dd-to-signal diff AAPL
 ```
 
-That is the whole setup. The second command downloads Apple's two most recent
-10-K filings from SEC EDGAR, lines up the paragraphs, and prints what changed.
+That downloads Apple's two most recent 10-K filings from SEC EDGAR, lines up the
+paragraphs, and prints what changed. There is no API key and no account, because
+EDGAR is a free public service. The contact address is the SEC's fair access
+rule: they want to be able to reach whoever is running a script against them.
+Nothing is baked into the package, because then every user of this tool would be
+hiding behind one identity.
 
 More of the same:
 
@@ -30,10 +43,10 @@ dd-to-signal scan AAPL NVDA GM F TGT -o out     # rank a basket, write HTML
 
 ## Yes, the data is live
 
-Every command above hits [SEC EDGAR](https://www.sec.gov/edgar) directly and
-reads whatever is filed right now. There is no vendor, no snapshot, no dataset
-to keep updated, and no API key, because EDGAR is a free public service. A 10-K
-filed this morning is available to `dd-to-signal diff` this afternoon.
+Every `diff` and `scan` hits [SEC EDGAR](https://www.sec.gov/edgar) directly and
+reads whatever is filed right now. There is no vendor, no snapshot and no dataset
+to keep updated. A 10-K filed this morning is available to `dd-to-signal diff`
+this afternoon.
 
 Two details worth knowing, since caching is where tools like this usually go
 quietly stale:
@@ -50,10 +63,9 @@ quietly stale:
 `dd-to-signal cache` shows what is on disk. `--offline` works from the cache
 alone, which is useful on a plane and useful for testing.
 
-There is also a bundled demo that needs no network at all, using six real
-filings shipped inside the package. It exists so the test suite has something
-honest to run against, and so you can see the output before deciding whether to
-install anything:
+The bundled demo uses six real filings shipped inside the package. It exists so
+the test suite has something honest to run against, and so you can see real
+output before setting anything up:
 
 ```bash
 dd-to-signal demo             # six companies, ranked
@@ -170,12 +182,13 @@ history may sit under a predecessor's CIK that you can pass directly.
 Useful flags: `--form 10-Q`, `--back N` for more history, `-o DIR` for HTML,
 `--open`, `--offline`, `--limit N` to cap the changes rendered per section.
 
-**EDGAR etiquette.** SEC fair access asks for a User-Agent containing a contact
-address and caps you at ten requests a second. This runs at six. Set your own
-contact with `DDSIGNAL_USER_AGENT="Your Name you@example.com"`. Note the shape
-carefully: `www.sec.gov` returns 403 for any User-Agent containing a URL, while
-`data.sec.gov` accepts one happily. That difference costs everybody an afternoon
-the first time.
+**EDGAR etiquette.** Fair access caps you at ten requests a second, and this runs
+at six. The accepted contact format is narrower than the SEC documents: as of
+this writing `www.sec.gov` returns 403 for any User-Agent without something
+email-shaped in it, and also rejects URLs, parentheses, and
+`@users.noreply.github.com` addresses, while `data.sec.gov` is far more relaxed.
+The plain `Your Name you@example.com` form satisfies both. That difference costs
+everybody an afternoon the first time.
 
 ## The word lists are yours to change
 

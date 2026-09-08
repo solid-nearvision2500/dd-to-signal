@@ -42,7 +42,10 @@ class StubSession:
 
 @pytest.fixture
 def client(tmp_path):
+    """A client with a contact address, unless a test deliberately omits one."""
+
     def build(session: StubSession, **kwargs) -> EdgarClient:
+        kwargs.setdefault("user_agent", "Test Suite test@example.com")
         return EdgarClient(cache_dir=tmp_path, rate=0, session=session, **kwargs)
 
     return build
@@ -168,20 +171,41 @@ class TestOffline:
 
 
 class TestUserAgent:
-    def test_the_default_carries_a_contact_and_no_url(self, client):
-        # www.sec.gov returns 403 for any User-Agent containing a URL, while
-        # data.sec.gov accepts one. The default has to satisfy both.
+    def test_no_contact_means_no_request_is_made(self, client, monkeypatch):
+        # The package ships no contact address on purpose, so that every user
+        # identifies themselves to the SEC rather than hiding behind one shared
+        # identity baked into the wheel.
+        monkeypatch.delenv("DDSIGNAL_USER_AGENT", raising=False)
         session = StubSession()
-        edgar = client(session)
-        agent = session.headers["User-Agent"]
-        assert "@" in agent
-        assert "http" not in agent
-        assert edgar.user_agent == agent
+        with pytest.raises(EdgarError, match="contact address"):
+            client(session, user_agent="").get(URL)
+        assert session.calls == []
 
-    def test_it_can_be_overridden(self, client):
+    def test_the_error_says_how_to_set_one(self, client, monkeypatch):
+        monkeypatch.delenv("DDSIGNAL_USER_AGENT", raising=False)
+        with pytest.raises(EdgarError) as caught:
+            client(StubSession(), user_agent="").get(URL)
+        assert "DDSIGNAL_USER_AGENT" in str(caught.value)
+        assert "demo" in str(caught.value)
+
+    def test_the_environment_supplies_one(self, client, monkeypatch):
+        monkeypatch.setenv("DDSIGNAL_USER_AGENT", "Someone someone@example.com")
         session = StubSession()
-        client(session, user_agent="Someone someone@example.com")
+        client(session, user_agent="").get(URL)
         assert session.headers["User-Agent"] == "Someone someone@example.com"
+
+    def test_an_explicit_argument_wins(self, client, monkeypatch):
+        monkeypatch.setenv("DDSIGNAL_USER_AGENT", "Env env@example.com")
+        session = StubSession()
+        client(session, user_agent="Direct direct@example.com").get(URL)
+        assert session.headers["User-Agent"] == "Direct direct@example.com"
+
+    def test_cached_reads_need_no_contact(self, client, monkeypatch):
+        # Someone handed a populated cache should be able to work from it.
+        client(StubSession()).get(URL)
+
+        monkeypatch.delenv("DDSIGNAL_USER_AGENT", raising=False)
+        assert client(StubSession(), user_agent="").get(URL).text == "payload"
 
 
 class TestRateLimiter:
