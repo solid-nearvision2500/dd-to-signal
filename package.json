@@ -1,0 +1,14 @@
+{
+  "name": "dd-to-signal-gif",
+  "private": true,
+  "description": "Tooling that records the README GIFs. Not part of the Python package.",
+  "type": "module",
+  "scripts": {
+    "gif": "python scripts/make-demo-page.py && node scripts/record-gif.mjs && node scripts/record-report-gif.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "gifenc": "^1.0.3",
+    "pngjs": "^7.0.0"
+  }
+}

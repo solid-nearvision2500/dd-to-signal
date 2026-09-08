@@ -1,0 +1,191 @@
+"""A polite, cached HTTP client for SEC EDGAR.
+
+EDGAR is free and needs no key, but it does have rules: every request must carry
+a User-Agent that identifies you with a contact address, and you must stay under
+ten requests a second. Break either and you get a 403 that looks like a bug in
+your code for about twenty minutes before you read the fair-access notice.
+
+So this module is the only place in the project that touches the network, and it
+does three things: identifies itself, throttles itself, and caches everything to
+disk. The cache is what makes the rest of the project pleasant to work on -- the
+second run of a pipeline over the same filings does no network I/O at all.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import logging
+import os
+import threading
+import time
+from dataclasses import dataclass
+from pathlib import Path
+
+import requests
+
+log = logging.getLogger(__name__)
+
+#: SEC fair-access wants "Name contact@example.com". Note the shape carefully:
+#: www.sec.gov returns 403 for any User-Agent containing a URL or parentheses,
+#: while data.sec.gov accepts them happily. Half a day went into finding that,
+#: so the default here is the plain two-token form that both hosts accept.
+DEFAULT_USER_AGENT = "dd-to-signal opusdevs@proton.me"
+
+#: The SEC's published ceiling is ten requests a second. We sit at six, because
+#: the ceiling is shared with every other tool running on your IP and being the
+#: one that tips it over is not a good trade for 40% more throughput.
+DEFAULT_RATE = 6.0
+
+
+def default_cache_dir() -> Path:
+    """Where downloaded filings live between runs.
+
+    Honours ``DDSIGNAL_CACHE`` so CI and the test suite can point somewhere
+    disposable without every call site having to thread a path through.
+    """
+    env = os.environ.get("DDSIGNAL_CACHE")
+    if env:
+        return Path(env)
+    base = os.environ.get("XDG_CACHE_HOME") or os.environ.get("LOCALAPPDATA")
+    if base:
+        return Path(base) / "ddsignal"
+    return Path.home() / ".cache" / "ddsignal"
+
+
+class RateLimiter:
+    """Spaces calls at least ``1/rate`` seconds apart, across threads."""
+
+    def __init__(self, rate: float = DEFAULT_RATE) -> None:
+        self._interval = 1.0 / rate if rate > 0 else 0.0
+        self._lock = threading.Lock()
+        self._next_at = 0.0
+
+    def wait(self) -> None:
+        if not self._interval:
+            return
+        with self._lock:
+            now = time.monotonic()
+            sleep_for = self._next_at - now
+            self._next_at = max(now, self._next_at) + self._interval
+        if sleep_for > 0:
+            time.sleep(sleep_for)
+
+
+class EdgarError(RuntimeError):
+    """A request to EDGAR failed in a way retrying will not fix."""
+
+
+@dataclass
+class Fetch:
+    """The result of a fetch, plus whether it came off disk."""
+
+    body: bytes
+    from_cache: bool
+
+    @property
+    def text(self) -> str:
+        # EDGAR is inconsistent about encodings and about declaring them. Older
+        # filings are latin-1 with the odd smart quote; newer ones are UTF-8.
+        # Replacing undecodable bytes beats crashing on a 2009 10-K.
+        return self.body.decode("utf-8", errors="replace")
+
+
+class EdgarClient:
+    """Fetches EDGAR URLs, once.
+
+    >>> client = EdgarClient()                             # doctest: +SKIP
+    >>> client.json("https://data.sec.gov/submissions/CIK0000320193.json")  # doctest: +SKIP
+    """
+
+    def __init__(
+        self,
+        *,
+        user_agent: str | None = None,
+        cache_dir: Path | None = None,
+        rate: float = DEFAULT_RATE,
+        offline: bool = False,
+        session: requests.Session | None = None,
+    ) -> None:
+        self.user_agent = user_agent or os.environ.get("DDSIGNAL_USER_AGENT") or DEFAULT_USER_AGENT
+        self.cache_dir = Path(cache_dir) if cache_dir else default_cache_dir()
+        self.offline = offline
+        self._limiter = RateLimiter(rate)
+        self._session = session or requests.Session()
+        self._session.headers.update(
+            {
+                "User-Agent": self.user_agent,
+                "Accept-Encoding": "gzip, deflate",
+            }
+        )
+
+    # -- cache ---------------------------------------------------------------
+
+    def _cache_path(self, url: str) -> Path:
+        digest = hashlib.sha256(url.encode("utf-8")).hexdigest()
+        # Two levels of fan-out; a full S&P 500 pull is ~20k files and one flat
+        # directory of that size is miserable on every filesystem involved.
+        return self.cache_dir / digest[:2] / digest[2:4] / f"{digest}.bin"
+
+    def cached(self, url: str) -> bytes | None:
+        path = self._cache_path(url)
+        return path.read_bytes() if path.exists() else None
+
+    # -- fetching ------------------------------------------------------------
+
+    def get(self, url: str, *, retries: int = 3) -> Fetch:
+        """Return the body of ``url``, from disk if we have already seen it."""
+        hit = self.cached(url)
+        if hit is not None:
+            return Fetch(hit, from_cache=True)
+
+        if self.offline:
+            raise EdgarError(
+                f"offline, and {url} is not cached. Run without --offline to fetch it, "
+                "or point --cache at a directory that has it."
+            )
+
+        body = self._get_uncached(url, retries=retries)
+        path = self._cache_path(url)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Write-then-rename, so an interrupted run cannot leave a truncated file
+        # that looks like a valid cache hit forever after.
+        tmp = path.with_suffix(".part")
+        tmp.write_bytes(body)
+        tmp.replace(path)
+        return Fetch(body, from_cache=False)
+
+    def _get_uncached(self, url: str, *, retries: int) -> bytes:
+        last: Exception | None = None
+        for attempt in range(retries):
+            self._limiter.wait()
+            try:
+                response = self._session.get(url, timeout=30)
+            except requests.RequestException as exc:
+                last = exc
+                log.debug("edgar: %s failed (%s), retrying", url, exc)
+            else:
+                if response.status_code == 200:
+                    return response.content
+                if response.status_code == 404:
+                    raise EdgarError(f"404 from EDGAR for {url}")
+                if response.status_code == 403:
+                    raise EdgarError(
+                        "403 from EDGAR. This nearly always means the User-Agent is missing a "
+                        "contact address. Set DDSIGNAL_USER_AGENT to something like "
+                        "'yourname you@example.com'."
+                    )
+                # 429 and the 5xx family are worth another go.
+                last = EdgarError(f"HTTP {response.status_code} from {url}")
+                log.debug("edgar: %s returned %s, retrying", url, response.status_code)
+
+            # Exponential, starting at a second. EDGAR's rate limiter forgives
+            # quickly; its outages do not, and three tries is enough to tell them
+            # apart without hanging a batch run for minutes.
+            time.sleep(2**attempt)
+
+        raise EdgarError(f"giving up on {url} after {retries} attempts") from last
+
+    def json(self, url: str) -> dict:
+        import json
+
+        return json.loads(self.get(url).text)

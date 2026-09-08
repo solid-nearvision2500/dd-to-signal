@@ -1,0 +1,67 @@
+# Hedging and uncertainty markers.
+#
+# These are the words a filer reaches for when a statement has to be made but
+# cannot be stood behind. A rising rate of them in a section that used to be
+# written plainly is the signal this project is looking for.
+#
+# One term per line. "#" starts a comment. Multi-word terms are matched as
+# phrases. Everything is matched on word boundaries, case-insensitively.
+may
+might
+could
+would
+possibly
+potentially
+perhaps
+uncertain
+uncertainty
+uncertainties
+unpredictable
+unclear
+believe
+believes
+believed
+expect
+expects
+expected
+anticipate
+anticipates
+anticipated
+estimate
+estimates
+estimated
+assume
+assumes
+assumed
+intend
+intends
+project
+projects
+projected
+seek
+seeks
+approximately
+substantially
+generally
+largely
+primarily
+principally
+relatively
+somewhat
+certain
+various
+subject to
+depends on
+dependent on
+no assurance
+cannot assure
+cannot be assured
+cannot predict
+difficult to predict
+there can be no
+if any
+among other things
+from time to time
+in the event
+to the extent
+should not be relied

@@ -1,0 +1,158 @@
+{% extends "base.html.j2" %}
+{% block title %}{{ diff.ticker }} {{ diff.new.form }} redline &mdash; dd-to-signal{% endblock %}
+
+{% block body %}
+<div class="masthead">
+  <div>
+    <div class="brand">dd-to-signal &middot; filing redline</div>
+    <h1><span class="ticker">{{ diff.ticker }}</span> {{ diff.company }}</h1>
+    <p class="subtitle">
+      {{ diff.old.form }} filed {{ diff.old.filed }}
+      <span class="arrow">&rarr;</span>
+      {{ diff.new.form }} filed {{ diff.new.filed }}
+      &middot; <a href="{{ diff.new.url }}">source</a>
+    </p>
+  </div>
+  <div class="signal">
+    <div class="value {{ signal_class }}">{{ diff.signal }}</div>
+    <div class="label">signal</div>
+  </div>
+</div>
+
+<p class="headline">{{ diff.headline }}</p>
+
+<div class="metrics">
+  <div class="metric">
+    <div class="k">Text churn</div>
+    <div class="v">{{ '%.0f' % (diff.churn_rate * 100) }}%</div>
+    <div class="sub">of the narrative sections</div>
+  </div>
+  <div class="metric">
+    <div class="k">Hedging</div>
+    <div class="v {{ 'up' if diff.hedging_delta > 0 else 'down' }}">
+      {{ '%+.1f' % diff.hedging_delta }}
+    </div>
+    <div class="sub">per 1,000 words</div>
+  </div>
+  <div class="metric">
+    <div class="k">Tone</div>
+    <div class="v {{ 'down' if diff.tone_delta > 0 else 'up' }}">
+      {{ '%+.2f' % diff.tone_delta }}
+    </div>
+    <div class="sub">negative &minus;1 to positive +1</div>
+  </div>
+  <div class="metric">
+    <div class="k">Paragraphs changed</div>
+    <div class="v">{{ total_changed }}</div>
+    <div class="sub">of {{ total_paragraphs }} compared</div>
+  </div>
+</div>
+
+{% if diff.new_topics or diff.intensified_topics or diff.dropped_topics %}
+<div class="chips">
+  {% for name, hits in diff.new_topics.items() %}
+    <span class="chip new">New to {{ diff.topic_scope }}: <b>{{ name }}</b></span>
+  {% endfor %}
+  {% for shift in diff.intensified_topics %}
+    <span class="chip up-chip">{{ shift.name }} <b>{{ shift.old_count }}&rarr;{{ shift.new_count }}</b></span>
+  {% endfor %}
+  {% for name, hits in diff.dropped_topics.items() %}
+    <span class="chip gone">No longer in {{ diff.topic_scope }}: <b>{{ name }}</b></span>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="tabs" role="tablist">
+  {% for key, section in diff.sections.items() %}
+  <button class="tab" role="tab" data-section="{{ key }}"
+          aria-selected="{{ 'true' if loop.first else 'false' }}">
+    {{ section.title }}<span class="count">{{ section.edited | length }}</span>
+  </button>
+  {% endfor %}
+</div>
+
+{% for key, section in diff.sections.items() %}
+<div class="panel" data-section="{{ key }}" {% if not loop.first %}hidden{% endif %}>
+  <div class="filters">
+    <button class="filter" data-kind="all" aria-pressed="true">all {{ section.edited | length }}</button>
+    <button class="filter" data-kind="added" aria-pressed="false">added {{ section.counts.added }}</button>
+    <button class="filter" data-kind="modified" aria-pressed="false">rewritten {{ section.counts.modified }}</button>
+    <button class="filter" data-kind="removed" aria-pressed="false">dropped {{ section.counts.removed }}</button>
+    <span class="change-meta" style="margin-left:auto">
+      {{ section.old.words | thousands }} &rarr; {{ section.new.words | thousands }} words
+      &middot; {{ '%.0f' % (section.churn_rate * 100) }}% churn
+    </span>
+  </div>
+
+  {% for change in section.edited[:limit] %}
+  <article class="change" data-kind="{{ change.kind.value }}">
+    <div class="change-head">
+      <span class="badge {{ change.kind.value }}">
+        {{ {'added': 'new', 'removed': 'dropped', 'modified': 'rewritten'}[change.kind.value] }}
+      </span>
+      {% if change.topics %}
+      <span class="change-topics">{{ change.topics | join(' &middot; ') | safe }}</span>
+      {% endif %}
+      <span class="change-meta">
+        {% if change.kind.value == 'modified' %}
+          +{{ change.words_added }} &minus;{{ change.words_removed }} words
+          &middot; {{ '%.0f' % (change.similarity * 100) }}% unchanged
+        {% else %}
+          {{ change.churn }} words
+        {% endif %}
+      </span>
+    </div>
+    {% if change.kind.value == 'modified' %}
+      <div class="prose">{{ change.spans | redline | safe }}</div>
+    {% elif change.kind.value == 'added' %}
+      <div class="prose whole-added">{{ change.new }}</div>
+    {% else %}
+      <div class="prose whole-removed">{{ change.old }}</div>
+    {% endif %}
+  </article>
+  {% else %}
+  <p class="empty">Nothing changed in this section.</p>
+  {% endfor %}
+
+  {% if section.edited | length > limit %}
+  <p class="empty">
+    {{ section.edited | length - limit }} smaller changes not shown.
+    Raise the cap with <code>--limit</code>.
+  </p>
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block footnote %}
+Signal is a sort order, not a prediction: {{ '%.0f' % (diff.churn_rate * 100) }}% churn,
+{{ diff.new_topics | length }} new topic(s), hedging {{ '%+.1f' % diff.hedging_delta }}.
+{% endblock %}
+
+{% block script %}
+<script>
+// Tabs and filters. No framework: the report is a file people email to each
+// other, and it has to keep working from a Downloads folder in five years.
+const panels = [...document.querySelectorAll('.panel')];
+
+document.querySelectorAll('.tab').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((t) =>
+      t.setAttribute('aria-selected', String(t === tab)));
+    panels.forEach((p) => { p.hidden = p.dataset.section !== tab.dataset.section; });
+  });
+});
+
+document.querySelectorAll('.filter').forEach((button) => {
+  button.addEventListener('click', () => {
+    const panel = button.closest('.panel');
+    panel.querySelectorAll('.filter').forEach((b) =>
+      b.setAttribute('aria-pressed', String(b === button)));
+    const kind = button.dataset.kind;
+    panel.querySelectorAll('.change').forEach((el) => {
+      el.hidden = kind !== 'all' && el.dataset.kind !== kind;
+    });
+  });
+});
+</script>
+{% endblock %}

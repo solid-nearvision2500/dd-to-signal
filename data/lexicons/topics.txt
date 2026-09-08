@@ -1,0 +1,175 @@
+# Risk topics.
+#
+# Each [section] is a topic; the lines under it are the terms that indicate it.
+# A paragraph is tagged with a topic if it contains at least two distinct terms
+# from that topic, or one term marked with a leading "!" as sufficient on its
+# own. The two-term rule matters: every 10-K in existence says "competition"
+# once in passing, and tagging on that would make the topic meaningless.
+
+[artificial intelligence]
+# All-caps terms are matched case-sensitively; see nlp/lexicon.py. Plenty of
+# filings say "AI" a hundred times and never spell it out once.
+!AI
+!LLM
+!artificial intelligence
+!generative ai
+!machine learning
+!large language model
+algorithm
+algorithms
+automation
+chatbot
+model training
+training data
+inference
+neural
+deepfake
+hallucination
+
+[cybersecurity]
+!cybersecurity
+!cyberattack
+!ransomware
+!data breach
+security incident
+malware
+phishing
+intrusion
+unauthorized access
+threat actor
+vulnerability
+encryption
+information security
+
+[supply chain]
+!supply chain
+supplier
+suppliers
+sole source
+single source
+component shortage
+logistics
+inventory
+manufacturing capacity
+lead time
+lead times
+foundry
+raw material
+raw materials
+freight
+shipping
+
+[china and geopolitics]
+!export control
+!export controls
+china
+taiwan
+russia
+ukraine
+israel
+geopolitical
+sanctions
+trade restrictions
+national security
+entity list
+decoupling
+hong kong
+
+[tariffs and trade]
+!tariff
+!tariffs
+customs duties
+trade policy
+import duties
+trade war
+retaliatory
+protectionism
+usmca
+most favored nation
+
+[regulation]
+!regulatory
+!regulation
+compliance
+antitrust
+legislation
+enforcement action
+consent decree
+gdpr
+privacy law
+data protection
+licensing requirements
+sec rules
+statute
+
+[climate and environment]
+!climate change
+!greenhouse gas
+!net zero
+emissions
+carbon
+environmental regulations
+extreme weather
+sustainability
+water scarcity
+renewable
+decarbonisation
+decarbonization
+
+[labour and talent]
+!key personnel
+!labor shortage
+!union
+workforce
+employees
+attrition
+retention
+hiring
+strike
+collective bargaining
+wage inflation
+talent
+
+[interest rates and credit]
+!interest rate
+!credit rating
+inflation
+inflationary
+refinancing
+debt covenants
+liquidity
+borrowing costs
+maturities
+leverage
+capital markets
+downgrade
+
+[intellectual property]
+!intellectual property
+!patent infringement
+patents
+trademarks
+trade secrets
+licensing
+copyright
+open source
+infringement claims
+
+[customer concentration]
+!customer concentration
+largest customer
+significant customer
+small number of customers
+concentration of revenue
+one customer accounted
+major customers
+
+[health and pandemic]
+!pandemic
+!epidemic
+covid
+public health
+quarantine
+outbreak
+health emergency
+vaccine

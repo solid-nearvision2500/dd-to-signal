@@ -1,0 +1,89 @@
+{% extends "base.html.j2" %}
+{% block title %}Filing scan &mdash; dd-to-signal{% endblock %}
+
+{% block body %}
+<div class="masthead">
+  <div>
+    <div class="brand">dd-to-signal &middot; scan</div>
+    <h1>What changed in {{ diffs | length }} filings</h1>
+    <p class="subtitle">
+      {{ form }} year-on-year &middot; generated {{ generated }}
+      {% if skipped %}&middot; {{ skipped | length }} skipped{% endif %}
+    </p>
+  </div>
+  <div class="signal">
+    <div class="value {{ top_class }}">{{ diffs[0].signal if diffs else '--' }}</div>
+    <div class="label">top signal</div>
+  </div>
+</div>
+
+<table class="scan">
+  <thead>
+    <tr>
+      <th>Company</th>
+      <th>Filing</th>
+      <th>What changed</th>
+      <th style="text-align:right">Signal</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for diff in diffs %}
+    <tr>
+      <td class="tk">
+        {{ diff.ticker }}
+        <span class="co">{{ diff.company | truncate(34) }}</span>
+      </td>
+      <td class="hl" style="white-space:nowrap">
+        {{ diff.new.filed }}
+        <span class="co" style="display:block;color:var(--ink-faint);font-size:12px">
+          vs {{ diff.old.filed }}
+        </span>
+      </td>
+      <td class="hl">
+        <span class="strong">{{ diff.headline }}</span>
+        {% if diff.new_topics or diff.intensified_topics %}
+        <div class="chips">
+          {% for name in diff.new_topics %}
+            <span class="chip new">new: <b>{{ name }}</b></span>
+          {% endfor %}
+          {% for shift in diff.intensified_topics[:2] %}
+            <span class="chip up-chip">{{ shift.name }} <b>{{ shift.old_count }}&rarr;{{ shift.new_count }}</b></span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if reports.get(diff.ticker) %}
+        <div style="margin-top:8px">
+          <a href="{{ reports[diff.ticker] }}">Read the redline &rarr;</a>
+        </div>
+        {% endif %}
+      </td>
+      <td class="sg {{ diff | signal_class }}">
+        {{ diff.signal }}
+        <div class="bar"><i style="width: {{ diff.signal }}%"></i></div>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="4" class="empty">Nothing to compare.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% if skipped %}
+<h2 style="font-size:15px;margin:32px 0 8px;color:var(--ink-dim)">Skipped</h2>
+<table class="scan">
+  <tbody>
+  {% for ticker, reason in skipped %}
+    <tr>
+      <td class="tk" style="width:120px">{{ ticker }}</td>
+      <td class="hl">{{ reason }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}
+
+{% block footnote %}
+Ranked by signal: text churn weighted towards risk factors, plus new risk
+topics, plus a nudge for language getting vaguer.
+{% endblock %}
